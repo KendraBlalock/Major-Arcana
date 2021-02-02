@@ -1,0 +1,398 @@
+---
+title: "A Probe Into Major Arcana Keywords"
+author: "Kendra Blalock"
+date: "1/31/2021"
+output:
+  revealjs::revealjs_presentation:
+    theme: blood
+    center: true
+    transition: slide
+    touch: true
+    loop: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+#Libraries 
+library(dplyr)
+library(tidyr)
+library(sentimentr)
+library(tm)
+library(readxl)
+library(stringr)
+library(ggplot2)
+
+```
+
+## Project Goal
+
+I have become increasingly interested in the use of tarot as means of self-reflection. Modern tarot decks are usually composed of 78 cards split into two groups: the Major Arcana with 22 cards and the Minor Arcana with 56 cards assigned to 4 suits. Tarot cards symbolize aspects of ourselves, experiences we have, and our relationships. In pop culture, tarot readings are often shown as fortune telling. Many people use tarot to receive messages or direction from the part of existence that is larger than themselves, whether called the universe, god, or something else. 
+
+----
+
+Recently I have been exploring tarot as a tool to examine one's own mind and emotions without any implications of supernatural elements. For example, if I pull the Three of Cups card which is traditionally associated with friendship, collaboration, and celebration, I would then watch the thoughts and emotions that arise from pulling that card. Do I feel grateful for the friends I have in my life? Am I feeling sorrow for past friendships that have faded? Do I feel any disconnection? 
+
+----
+
+Having absolutely no experience with tarot until a few years ago, I came to the practice with no knowledge of the cards' visual imagery or meanings. The artwork of many of the modern decks are lovely and worth checking out even for purely asthetic purposes. 
+
+Decks usually come with guidebooks outlining the cards' meanings. Although guides may differ slightly in their explanations, there seems to be good consistency in the meanings associated with cards. Guides will often list a set of keywords for each card to get a quick understanding. 
+
+----
+
+Two questions peeked my curiosity. 
+
+1. I noticed that card meanings tended to be more positive and that guides seemed to neutralize cards that could be perceived as negative, such as the Death card. Do the cards tend to side towards positive meanings? If so, it might be an interesting reflection of what we want from tarot and what perpetuates its use. 
+
+2. I noticed that some keywords appeared regularly for multiple cards. What underlying themes may be running through tarot? These themes might illuminate specific reasons we are drawn to tarot.  
+
+
+## Collected Data
+
+I copied the short list of keywords from 10 online tarot guides for the 22 Major Arcana cards. With more time, the analysis could easily be rerun with data for all 78 cards.
+
+Some only read tarot cards right side up; if they pull a card that is upside down, they flip it before proceeding. However, some will leave the card upside down. In these situations, the meaning of the card is reversed (generally opposite) from the card's regular meaning. These reverse meanings become important when exploring the positive/negative characteristic of card meanings. 
+
+Upright and reverse card meaning keywords were noted. Only 4/10 sites had keywords listed for reverse card meanings. 
+
+```{r datasource, echo = F, results=F}
+# Data sources used:
+# https://www.biddytarot.com/tarot-card-meanings                                  
+# https://labyrinthos.co/blogs/tarot-card-meanings-list                           
+# https://www.thetarotguide.com/major-arcana                                      
+# https://www.incandescenttarot.com/majorarcana                                   
+# https://www.tarot-explained.com/card-meanings/major-arcana/                     
+# https://tarotparlor.com/tarot-card-meanings-major-arcana/                       
+# https://www.thetarotlady.com/tarot-card-meanings/                               
+# https://www.mindbodygreen.com/articles/what-cards-in-traditional-tarot-deck-mean
+# https://www.trustedtarot.com/card-meanings/                                     
+# https://littleredtarot.com/learn-tarot/library/  
+
+```
+
+## Example of Keywords for Upright and Reversed Cards
+
+![](TarotThemesAndExample-01.png) 
+
+## Positive/Negative Text Sentiment Analysis 
+
+To gauge the level of positive and negative emotional affective of the card keywords, I used the sentimentr package. 
+```{r sentiment, echo = TRUE}
+#load data
+data <- read_xlsx("Tarot_Meaning.xlsx")
+
+#sentiment score for upright and reverse cards
+data_s <- sentiment_by(data$Short)
+data_s_r <- sentiment_by(data$Short_Inverse)
+
+#rename columns and drop word_count and sd
+data_s <- data_s %>% rename(ave_sent_s = "ave_sentiment") %>% 
+  select(-c(2,3))
+data_s_r <- data_s_r %>% rename(ave_sent_s_r = "ave_sentiment") %>% 
+  select(-c(2,3))
+
+#bind back to main dataset
+data <- data %>% bind_cols(data_s) %>% bind_cols(data_s_r)
+
+#remove sentiment dataframe
+rm(data_s, data_s_r)
+
+#average sentiment score per card
+avg_table <- data %>% group_by(Card_Name) %>% 
+  summarise(Mean_Upright = mean(ave_sent_s)) %>%  
+  bind_cols(data %>% group_by(Card_Name) %>% 
+  summarise(Mean_Reverse = mean(ave_sent_s_r))) %>% 
+  arrange(desc(Mean_Upright)) %>% 
+  select(-3)
+
+```
+
+----
+
+The average sentiment polarity scores provide a guide of the emotional affect of a card, with the more positive card meanings having higher positive scores and more negative card meanings have lower negative scores. Cards with scores closer to 0 have a more neutral affect. 
+
+----
+
+Upright cards were more positive with an average score of 0.485; however, with an average of -0.299 the reversed cards didn't have as strong of a negative average score one would expect if the meanings were just simply flipped. 
+
+Most interesting is that the range of sentiment scores for the upright cards (-1.199 to 1.563) was much wider than the reversed cards (-0.499 to 0.163).
+```{r avg_sent, echo = TRUE}
+# Mean of upright and reversed cards
+options(digits = 3)
+summary(avg_table)
+
+```
+
+----
+
+Numbers are great, but to get a real feel for the differences in cards, I made black and white copies of the traditional Rider-Waite tarot deck and placed the cards on a positive to negative continuum.
+
+Starting with the most positive cards, the plot moves to neutral cards and then negative cards. Upright cards are on top of the line, and reversed cards are below the line. 
+
+----
+
+The high-level overview shows how the upright cards are more evenly spread, although skewed positive. The reverse cards tend to be more negative, but cluster much closer. 
+
+![](TarotLinePlot_full.png)
+The following slides provide a more detailed view.
+
+----
+
+![](TarotLinePlot-01.png)
+
+----
+
+![](TarotLinePlot-02.png)
+
+----
+
+![](TarotLinePlot-03.png)
+
+----
+
+![](TarotLinePlot-04.png)
+
+----
+
+![](TarotLinePlot-05.png)
+
+## Major Arcana Themes
+My second goal was to see what themes emerge from the Major Arcana by looking at keywords that are often listed for different cards. 
+```{r themes, echo = TRUE}
+#Prepare corpus file for upright cards
+corpus1 <- Corpus(VectorSource(c(unlist(data$Short)))) 
+
+##Text Cleaning for frequency list
+#Convert text to lower case
+corpus1 <- tm_map(corpus1, content_transformer(tolower))
+#Remove numbers
+corpus1 <- tm_map(corpus1, removeNumbers)
+#Remove English common stopwords
+corpus1 <- tm_map(corpus1, removeWords, stopwords("english"))
+#Remove punctuations 
+corpus1 <- tm_map(corpus1, removePunctuation)
+#Eliminate extra white spaces
+corpus1 <- tm_map(corpus1, stripWhitespace)
+#Remove additional words
+#corpus1 <- tm_map(corpus1, removeWords, c("addifneeded", "addifneeded"))
+
+#Create Term Document Matrix
+tdm1 <- TermDocumentMatrix(corpus1)
+m1 <- as.matrix(tdm1)
+v1 <- sort(rowSums(m1),decreasing = T) 
+theme <- data.frame(word=names(v1), freq=v1)
+
+rm(tdm1, m1, v1, corpus1)
+
+#Prepare corpus file for reverse cards
+corpus1 <- Corpus(VectorSource(c(unlist(data$Short_Inverse)))) 
+
+##Text Cleaning for frequency list
+#Convert text to lower case
+corpus1 <- tm_map(corpus1, content_transformer(tolower))
+#Remove numbers
+corpus1 <- tm_map(corpus1, removeNumbers)
+#Remove English common stopwords
+corpus1 <- tm_map(corpus1, removeWords, stopwords("english"))
+#Remove punctuations 
+corpus1 <- tm_map(corpus1, removePunctuation)
+#Eliminate extra white spaces
+corpus1 <- tm_map(corpus1, stripWhitespace)
+#Remove additional words
+#corpus1 <- tm_map(corpus1, removeWords, c("addifneeded", "addifneeded"))
+
+#Create Term Document Matrix
+tdm1 <- TermDocumentMatrix(corpus1)
+m1 <- as.matrix(tdm1)
+v1 <- sort(rowSums(m1),decreasing = T) 
+theme2 <- data.frame(word=names(v1), freq=v1)
+
+rm(tdm1, m1, v1, corpus1)
+
+#combine theme lists 
+theme <- theme %>% 
+  full_join((theme2 %>% rename(freq2 = freq)), by = "word") %>% 
+  rowwise() %>% 
+  mutate(freq3 = sum(freq, freq2, na.rm = TRUE)) %>% 
+  arrange(desc(freq3))
+
+rm(theme2)
+
+theme2 <- as.data.frame(theme %>% select(word) %>% head(10))
+
+```
+
+----
+
+Top 10 keywords listed across all of the cards.
+```{r top, echo = TRUE}
+
+theme2
+rm(theme2)
+
+```
+
+----
+
+To determine which cards were associated with a keyword, I decided on a cutoff that a keyword had to be listed at least 50% of the time for the card. Upright and reversed card meanings were both included.   
+
+```{r words, echo = TRUE}
+#add in variables noting if words are present
+data <- data %>% 
+  mutate(lack = case_when(str_detect(Short, "lack") ~ 1,
+                            str_detect(Short, "Lack") ~ 1,
+                            T ~ 0)) %>% 
+  mutate(change = case_when(str_detect(Short, "change") ~ 1,
+                     str_detect(Short, "Change") ~ 1,
+                     T ~ 0)) %>% 
+  mutate(new = case_when(str_detect(Short, "new") ~ 1,
+                            str_detect(Short, "New") ~ 1,
+                                          T ~ 0)) %>% 
+  mutate(sucess = case_when(str_detect(Short, "success") ~ 1,
+                            str_detect(Short, "Success") ~ 1,
+                            T ~ 0)) %>% 
+  mutate(power = case_when(str_detect(Short, "power") ~ 1,
+                            str_detect(Short, "Power") ~ 1,
+                            T ~ 0)) %>%    
+  mutate(inner = case_when(str_detect(Short, "inner") ~ 1,
+                            str_detect(Short, "Inner") ~ 1,
+                            T ~ 0)) %>%  
+  mutate(balance = case_when(str_detect(Short, "balance") ~ 1,
+                            str_detect(Short, "Balance") ~ 1,
+                            T ~ 0)) %>% 
+  mutate(control = case_when(str_detect(Short, "control") ~ 1,
+                             str_detect(Short, "Control") ~ 1,
+                             T ~ 0)) %>% 
+  mutate(intuition = case_when(str_detect(Short, "intuition") ~ 1,
+                            str_detect(Short, "Intuition") ~ 1,
+                            T ~ 0)) %>% 
+  mutate(good = case_when(str_detect(Short, "good") ~ 1,
+                            str_detect(Short, "Good") ~ 1,
+                            T ~ 0)) %>% 
+  mutate(lack_r = case_when(str_detect(Short_Inverse, "lack") ~ 1,
+                          str_detect(Short_Inverse, "Lack") ~ 1,
+                          T ~ 0)) %>% 
+  mutate(change_r = case_when(str_detect(Short_Inverse, "change") ~ 1,
+                            str_detect(Short_Inverse, "Change") ~ 1,
+                            T ~ 0)) %>% 
+  mutate(new_r = case_when(str_detect(Short_Inverse, "new") ~ 1,
+                         str_detect(Short_Inverse, "New") ~ 1,
+                         T ~ 0)) %>% 
+  mutate(sucess_r = case_when(str_detect(Short_Inverse, "success") ~ 1,
+                            str_detect(Short_Inverse, "Success") ~ 1,
+                            T ~ 0)) %>% 
+  mutate(power_r = case_when(str_detect(Short_Inverse, "power") ~ 1,
+                           str_detect(Short_Inverse, "Power") ~ 1,
+                           T ~ 0)) %>%    
+  mutate(inner_r = case_when(str_detect(Short_Inverse, "inner") ~ 1,
+                           str_detect(Short_Inverse, "Inner") ~ 1,
+                           T ~ 0)) %>%  
+  mutate(balance_r = case_when(str_detect(Short_Inverse, "balance") ~ 1,
+                             str_detect(Short_Inverse, "Balance") ~ 1,
+                             T ~ 0)) %>% 
+  mutate(control_r = case_when(str_detect(Short_Inverse, "control") ~ 1,
+                             str_detect(Short_Inverse, "Control") ~ 1,
+                             T ~ 0)) %>% 
+  mutate(intuition_r = case_when(str_detect(Short_Inverse, "intuition") ~ 1,
+                               str_detect(Short_Inverse, "Intuition") ~ 1,
+                               T ~ 0)) %>% 
+  mutate(good_r = case_when(str_detect(Short_Inverse, "good") ~ 1,
+                          str_detect(Short_Inverse, "Good") ~ 1,
+                          T ~ 0)) 
+
+
+```
+
+```{r shared, echo = F, results=F}
+
+## cards that have shared themes 
+
+#Lack
+data %>% filter(lack == 1) %>% count(Card_Name) %>% arrange(desc(n)) %>% filter(n>=5)
+data %>% filter(lack_r == 1) %>% count(Card_Name) %>% arrange(desc(n)) %>% filter(n>=2)
+
+#Change
+data %>% filter(change == 1) %>% count(Card_Name) %>% arrange(desc(n)) %>% filter(n>=5)
+data %>% filter(change_r == 1) %>% count(Card_Name) %>% arrange(desc(n)) %>% filter(n>=2)
+
+#New
+data %>% filter(new == 1) %>% count(Card_Name) %>% arrange(desc(n)) %>% filter(n>=5)
+data %>% filter(new_r == 1) %>% count(Card_Name) %>% arrange(desc(n)) %>% filter(n>=2)
+
+#Sucess
+data %>% filter(sucess == 1) %>% count(Card_Name) %>% arrange(desc(n)) %>% filter(n>=5)
+data %>% filter(sucess_r == 1) %>% count(Card_Name) %>% arrange(desc(n)) %>% filter(n>=2)
+
+#Power
+data %>% filter(power == 1) %>% count(Card_Name) %>% arrange(desc(n)) %>% filter(n>=5)
+data %>% filter(power_r == 1) %>% count(Card_Name) %>% arrange(desc(n)) %>% filter(n>=2)
+
+#Inner
+data %>% filter(inner == 1) %>% count(Card_Name) %>% arrange(desc(n)) %>% filter(n>=5)
+data %>% filter(inner_r == 1) %>% count(Card_Name) %>% arrange(desc(n)) %>% filter(n>=2)
+
+#Balance
+data %>% filter(balance == 1) %>% count(Card_Name) %>% arrange(desc(n)) %>% filter(n>=5)
+data %>% filter(balance_r == 1) %>% count(Card_Name) %>% arrange(desc(n)) %>% filter(n>=2)
+
+#Control
+data %>% filter(control == 1) %>% count(Card_Name) %>% arrange(desc(n)) %>% filter(n>=5)
+data %>% filter(control_r == 1) %>% count(Card_Name) %>% arrange(desc(n)) %>% filter(n>=2)
+
+#Intuition
+data %>% filter(intuition == 1) %>% count(Card_Name) %>% arrange(desc(n)) %>% filter(n>=5)
+data %>% filter(intuition_r == 1) %>% count(Card_Name) %>% arrange(desc(n)) %>% filter(n>=2)
+
+#Good
+data %>% filter(good == 1) %>% count(Card_Name) %>% arrange(desc(n)) %>% filter(n>=5)
+data %>% filter(good_r == 1) %>% count(Card_Name) %>% arrange(desc(n)) %>% filter(n>=2)
+
+
+```
+
+
+## Change
+
+![](TarotThemesAndExample-08.png)
+
+## New 
+
+![](TarotThemesAndExample-07.png)
+
+## Success
+
+![](TarotThemesAndExample-06.png)
+
+## Power
+
+![](TarotThemesAndExample-05.png)
+
+## Balance
+
+![](TarotThemesAndExample-04.png)
+
+## Control
+
+![](TarotThemesAndExample-03.png)
+
+## Intuition
+
+![](TarotThemesAndExample-02.png)
+
+## Lack
+
+![](TarotThemesAndExample-09.png)
+
+----
+
+It was fun to explore these questions in a quick project.  There are so many avenues to continue this investigation: 
+
+- Gather data for all 78 tarot cards
+- Increase the sample size significantly 
+- Include meanings from printed guides
+- Expand to the full text provided in guides, beyond the keywords 
+- Use statistical tests to evaluate differences 
+
+All around, though, this was an enjoyable project that produced interesting insights very quickly. 
+
